@@ -1,0 +1,5 @@
+{
+  "name": "test-google-ai",
+  "description": "A dashboard to display the status of various assets, designed to connect to a real-time data API.",
+  "requestFramePermissions": []
+}
