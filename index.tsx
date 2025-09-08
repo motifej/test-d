@@ -10,7 +10,7 @@ import './index.css';
 interface Asset {
   _id: string;
   name: string;
-  status: 'UP' | 'DOWN' | 'MAINTENANCE';
+  status: 'UP' | 'DOWN' | 'MAINTENANCE' | string | null; // More flexible for API data
   critical: boolean;
   safety: boolean;
   updatedAt: string;
@@ -18,53 +18,10 @@ interface Asset {
   company: string;
 }
 
-// Mock data based on the provided example, with variations
-const mockData: Asset[] = [
-  {
-    _id: "686cb3ed3a11b7e2f54ab80c",
-    name: "KGI",
-    status: "UP",
-    critical: true,
-    safety: false,
-    updatedAt: "2025-09-07T13:53:05.371Z",
-    group: "68bd8e27d1dcae4fa530e46a",
-    company: "5d7b2b8c66fb7300172be5de",
-  },
-  {
-    _id: "a1b2c3d4e5f6g7h8i9j0k1l2",
-    name: "Primary Compressor",
-    status: "DOWN",
-    critical: true,
-    safety: true,
-    updatedAt: "2025-09-07T11:21:00.150Z",
-    group: "68bd8e27d1dcae4fa530e46a",
-    company: "5d7b2b8c66fb7300172be5de",
-  },
-  {
-    _id: "z9y8x7w6v5u4t3s2r1q0p9o8",
-    name: "Conveyor Belt 1A",
-    status: "MAINTENANCE",
-    critical: false,
-    safety: true,
-    updatedAt: "2025-09-06T08:00:15.987Z",
-    group: "2a3b4c5d6e7f8g9h0i1j2k3l",
-    company: "5d7b2b8c66fb7300172be5de",
-  },
-    {
-    _id: "m1n2o3p4q5r6s7t8u9v0w1x2",
-    name: "HVAC Unit 3",
-    status: "UP",
-    critical: false,
-    safety: false,
-    updatedAt: "2025-09-07T14:05:30.456Z",
-    group: "2a3b4c5d6e7f8g9h0i1j2k3l",
-    company: "3c4d5e6f7g8h9i0j1k2l3m4n",
-  },
-];
-
 // Component for a single asset card
 const AssetCard: React.FC<{ asset: Asset }> = ({ asset }) => {
-  const statusClass = asset.status.toLowerCase();
+  const status = asset.status || 'UNKNOWN';
+  const statusClass = status.toLowerCase();
   const lastUpdated = new Date(asset.updatedAt).toLocaleString();
 
   return (
@@ -73,7 +30,7 @@ const AssetCard: React.FC<{ asset: Asset }> = ({ asset }) => {
         <h2 id={`asset-name-${asset._id}`}>{asset.name}</h2>
         <div className={`status ${statusClass}`}>
           <span className="status-dot" aria-hidden="true"></span>
-          {asset.status}
+          {status}
         </div>
       </header>
       <div className="card-body">
@@ -96,21 +53,27 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In the future, you can fetch real-time data here.
+    // Fetch real-time data from the API
     const fetchData = async () => {
       try {
         setLoading(true);
-        // TODO: Replace mockData with a fetch call to the real API
-        // const response = await fetch('https://anymaint-backend-main.anymaint.com/api/tools?lastFetched=null');
-        // if (!response.ok) {
-        //   throw new Error('Failed to fetch data');
-        // }
-        // const data = await response.json();
-        // setAssets(data);
+        setError(null);
+        const response = await fetch('https://anymaint-backend-main.anymaint.com/api/tools?lastFetched=null', {
+          headers: {
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVkN2IyYjhjNjZmYjczMDAxNzJiZTVkZiIsImlhdCI6MTc1NzMzODQ1MSwiZXhwIjoxNzU3Mzk2MDUxfQ.iBlFX2DJVw5LNtR13BvnNxluvMu7hw9qj2sUfc7PW8s'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+        }
+        const data = await response.json();
         
-        // Using mock data for now
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        setAssets(mockData);
+        // The API returns an object with a 'tools' property containing the asset array
+        if (data && Array.isArray(data.tools)) {
+          setAssets(data.tools);
+        } else {
+          throw new Error('Invalid data structure from API');
+        }
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
